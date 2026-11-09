@@ -1,0 +1,9 @@
+matplotlib==3.11.1
+pandas==3.0.3
+numpy==2.4.6
+pytz==2026.2
+pillow==12.3.0
+spidev==3.8
+RPi.GPIO==0.7.1
+gpiozero==2.0.1
+lgpio==0.2.2.0

@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aktiekurser</title>
+<style>
+:root{--bg:#f4f3ee;--card:#fff;--soft:#f0efe9;--text:#1c1c1a;--muted:#6b6a64;--line:#dedcd3;--accent:#1f5fbf;--accent-bg:#e6effb;--ok:#18794e;--bad:#c0392b;--radius:8px}
+@media (prefers-color-scheme:dark){:root{--bg:#161614;--card:#21211e;--soft:#2a2a26;--text:#ecebe4;--muted:#a09f96;--line:#3a3a35;--accent:#7fb0ff;--accent-bg:#1f3050;--ok:#5fcf97;--bad:#ff8a7a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px 16px 110px}
+h1{font-size:20px;margin:0}h2{font-size:16px;margin:0 0 10px;font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 14px}
+.chipurl{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background:var(--soft);padding:3px 10px;border-radius:var(--radius)}
+.muted{color:var(--muted);font-size:13px}.grow{flex:1;min-width:120px}
+button{font:inherit;font-size:14px;padding:6px 12px;border-radius:var(--radius);border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
+button:hover{background:var(--soft)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button.primary:hover{filter:brightness(1.1)}
+button.icon{padding:4px 9px}button:disabled{opacity:.45;cursor:default}
+input,select{font:inherit;font-size:14px;padding:6px 8px;border-radius:var(--radius);border:1px solid var(--line);background:var(--card);color:var(--text);min-width:0}
+input[type=number]{width:96px}input[type=text],input[type=search],input[type=password]{width:100%}
+input[type=checkbox]{width:auto}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;padding:3px 10px;border-radius:var(--radius);border:1px solid var(--line);background:transparent;color:var(--muted)}
+.chip.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.chip.off{opacity:.4;cursor:not-allowed}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:0 0 12px}
+.metric{background:var(--soft);border-radius:var(--radius);padding:10px 12px}
+.metric .l{font-size:12px;color:var(--muted)}.metric .v{font-size:22px;font-weight:600}.metric .s{font-size:12px}
+.pos{color:var(--ok)}.neg{color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 8px;text-align:right;border-top:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}th{font-weight:500;color:var(--muted);border-top:0;font-size:12px}
+.scroll{overflow-x:auto}
+.sub{font-size:11px;opacity:.85}
+td.nm{white-space:normal;min-width:110px;max-width:220px}
+tr.total td{font-weight:600;border-top:2px solid var(--line)}
+@media (max-width:560px){.hide-sm{display:none}}
+
+.row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;padding:12px 0;border-top:1px solid var(--line)}
+.row.disabled{opacity:.55}
+.row .name{flex:1;min-width:150px;align-self:center}.row .name b{font-weight:600}
+.field label{display:block;font-size:12px;color:var(--muted)}
+.btns{display:flex;gap:4px;align-self:center}
+.results{border:1px solid var(--line);border-radius:var(--radius);margin:8px 0 0}
+.res{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px}
+.res+.res{border-top:1px solid var(--line)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px;z-index:5}
+.bar .in{max-width:760px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.msg{font-size:13px}.msg.err{color:var(--bad)}.msg.ok{color:var(--ok)}
+img.cur{width:100%;max-width:400px;border:1px solid var(--line);border-radius:var(--radius);display:block;margin-top:8px;image-rendering:auto}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+.line{display:flex;align-items:center;gap:12px;margin:0 0 10px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>Aktiekurser</h1>
+    <span class="chipurl" id="url">…</span>
+    <span class="muted grow" id="now">Hämtar status…</span>
+    <button id="next" title="Hoppa till nästa vy på skärmen">Nästa vy</button>
+  </div>
+
+  <div class="card">
+    <h2>På skärmen nu</h2>
+    <img class="cur" id="cur" alt="Den bild som visas på e-ink-skärmen just nu" hidden>
+  </div>
+
+  <div class="card" id="pfcard" hidden>
+    <div class="line"><h2 style="margin:0">Portfölj</h2><span class="muted" id="pfsub"></span><span class="grow"></span><button id="pfrefresh">Uppdatera</button></div>
+    <div id="pfbody" class="muted">Hämtar kurser…</div>
+  </div>
+
+  <div class="card">
+    <div class="line"><h2 style="margin:0">Instrument</h2><span class="muted">Ordningen här styr ordningen på skärmen</span></div>
+    <div id="list"></div>
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+      <label class="muted" for="q">Lägg till instrument</label>
+      <input type="search" id="q" placeholder="Sök på namn, t.ex. ericsson" autocomplete="off">
+      <div id="results"></div>
+      <details style="margin-top:10px"><summary>Lägg till med orderbook-ID</summary>
+        <div class="line" style="margin-top:8px">
+          <input type="text" id="mid" inputmode="numeric" placeholder="Orderbook-ID, t.ex. 5247" style="width:200px">
+          <select id="mkind"><option value="stock">Aktie / ETF / index</option><option value="fund">Fond</option></select>
+          <button id="madd">Lägg till</button>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Visning</h2>
+    <div class="line">
+      <label for="secs" style="min-width:130px">Sekunder per vy</label>
+      <input type="range" id="secsr" min="5" max="120" step="1" style="flex:1;min-width:120px">
+      <input type="number" id="secs" min="5" max="3600" step="1">
+    </div>
+    <p class="muted" style="margin:-4px 0 10px">Varje instrument visar sina valda vyer efter varandra. Skärmen byter bild ungefär så här ofta.</p>
+    <label class="line"><input type="checkbox" id="showip"> Visa IP-adressen på skärmen</label>
+    <label class="line"><input type="checkbox" id="pfsum"> Visa portföljöversikt efter aktierna</label>
+    <label class="line"><input type="checkbox" id="pftab"> Visa innehavstabell efter aktierna</label>
+    <div class="line"><label for="pfper" style="min-width:130px">Portföljkurvans period</label><select id="pfper"></select></div>
+  </div>
+
+  <div class="card">
+    <h2>Lösenord</h2>
+    <p class="muted" style="margin:0 0 10px">Portföljen visar vad du äger. Med ett lösenord krävs inloggning (valfritt användarnamn) för att se eller ändra något. Anslutningen är okrypterad, så det skyddar mot nyfikna på nätet men inte mot någon som avlyssnar det.</p>
+    <div class="line"><input type="password" id="pw" placeholder="Nytt lösenord (minst 4 tecken)" autocomplete="new-password" style="max-width:280px">
+      <button id="pwset">Spara lösenord</button><button id="pwdel" hidden>Ta bort lösenord</button><span class="msg" id="pwmsg"></span></div>
+    <div class="muted" id="pwstate"></div>
+  </div>
+</main>
+
+<div class="bar"><div class="in">
+  <button class="primary" id="save">Spara och uppdatera skärmen</button>
+  <span class="msg" id="msg"></span>
+</div></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const nf = new Intl.NumberFormat("sv-SE", {maximumFractionDigits: 0});
+const nf2 = new Intl.NumberFormat("sv-SE", {maximumFractionDigits: 2});
+let S = null, dirty = false, searchTimer = null, searchSeq = 0;
+const names = {};            // id -> {name, ticker} learnt from search results, for display only
+
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, "");
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null) e.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return e;
+}
+const signed = (x, d = 0) => (x >= 0 ? "+" : "−") + Math.abs(x).toLocaleString("sv-SE", {maximumFractionDigits: d, minimumFractionDigits: d});
+const cls = x => x >= 0 ? "pos" : "neg";
+const numOrNull = v => { const t = String(v).trim().replace(/\s/g, "").replace(",", "."); if (t === "") return null; const n = Number(t); return Number.isFinite(n) ? n : NaN; };
+const fmtNum = v => v == null ? "" : String(v).replace(".", ",");
+
+async function api(path, body) {
+  const opt = body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)};
+  const r = await fetch(path, opt);
+  let data = null; try { data = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error((data && data.error) || ("Fel " + r.status));
+  return data;
+}
+function setMsg(text, kind) { const m = $("msg"); m.textContent = text || ""; m.className = "msg " + (kind || ""); }
+function markDirty() { dirty = true; setMsg("Osparade ändringar"); }
+window.addEventListener("beforeunload", e => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+
+/* ── status ─────────────────────────────────────────────────────────────── */
+function viewName(key) { const v = S.views.find(x => x.key === key); return v ? v.sv.toLowerCase() : key; }
+function renderStatus() {
+  $("url").textContent = S.url;
+  const c = S.current || {};
+  let t = "Väntar på första bilden…";
+  if (c.kind === "instrument") t = "Visar nu: " + c.name + " · " + viewName(c.view);
+  else if (c.kind === "portfolio") t = "Visar nu: portfölj · " + (c.view.startsWith("table") ? "innehavstabell" : "översikt");
+  else if (c.kind === "splash") t = "Startskärm";
+  else if (c.kind === "info") t = "Visar meddelande: " + c.name;
+  $("now").textContent = t;
+}
+function refreshImage() { const i = $("cur"); i.hidden = false; i.src = "/api/current.png?t=" + Date.now(); }
+async function pollState() {
+  try { const d = await api("/api/state"); S.current = d.current; S.url = d.url; renderStatus(); refreshImage(); } catch (e) {}
+}
+
+/* ── instruments ────────────────────────────────────────────────────────── */
+function moveInst(i, d) { const a = S.settings.instruments, j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; markDirty(); renderList(); }
+function renderList() {
+  const box = $("list"); box.replaceChildren();
+  const items = S.settings.instruments;
+  if (!items.length) box.append(h("p", {class: "muted"}, "Inga instrument ännu. Sök efter ett nedan."));
+  items.forEach((it, i) => {
+    const fund = it.kind === "fund";
+    const label = names[it.id] ? names[it.id].name : null;
+    const chips = S.views.map(v => {
+      const off = fund && v.key === "day";
+      const c = h("button", {class: "chip" + (it.views.includes(v.key) && !off ? " on" : "") + (off ? " off" : ""), type: "button",
+                             title: off ? "Fonder saknar dagsgraf" : null}, v.sv);
+      if (!off) c.addEventListener("click", () => {
+        const has = it.views.includes(v.key);
+        it.views = has ? it.views.filter(x => x !== v.key) : it.views.concat(v.key);
+        c.classList.toggle("on", !has); markDirty();
+      });
+      return c;
+    });
+    const num = (key, label, width) => h("div", {class: "field"}, h("label", {}, label),
+      h("input", {type: "text", inputmode: "decimal", value: fmtNum(it[key]), style: "width:" + width + "px",
+                  oninput: e => { it[key] = numOrNull(e.target.value); e.target.style.borderColor = Number.isNaN(it[key]) ? "var(--bad)" : ""; markDirty(); }}));
+    box.append(h("div", {class: "row" + (it.enabled ? "" : " disabled")},
+      h("div", {class: "name"},
+        h("b", {}, it.name || label || "Hämtar namn…"),
+        h("div", {class: "muted"}, [names[it.id] && names[it.id].ticker, fund ? "fond" : "aktie/ETF/index", "ID " + it.id, it.enabled ? null : "pausad"].filter(Boolean).join(" · "))),
+      h("div", {class: "chips"}, chips),
+      num("qty", "Antal", 80), num("cost", "Snittkurs / st", 96),
+      h("details", {style: "flex-basis:100%"},
+        h("summary", {}, "Fler fält"),
+        h("div", {class: "line", style: "margin-top:8px"},
+          h("div", {class: "field"}, h("label", {}, "Visningsnamn (valfritt)"),
+            h("input", {type: "text", value: it.name, maxlength: 40, style: "width:200px", oninput: e => { it.name = e.target.value; markDirty(); }})),
+          num("cost_total_sek", "Totalt anskaffningsvärde i SEK (valfritt, för utländska innehav med valutaeffekt)", 120),
+          h("label", {class: "line", style: "margin:0"}, h("input", {type: "checkbox", checked: it.enabled, onchange: e => { it.enabled = e.target.checked; markDirty(); renderList(); }}), "Visa i växlingen"))),
+      h("div", {class: "btns"},
+        h("button", {class: "icon", type: "button", title: "Flytta upp", "aria-label": "Flytta upp", disabled: i === 0, onclick: () => moveInst(i, -1)}, "↑"),
+        h("button", {class: "icon", type: "button", title: "Flytta ned", "aria-label": "Flytta ned", disabled: i === items.length - 1, onclick: () => moveInst(i, 1)}, "↓"),
+        h("button", {class: "icon", type: "button", title: "Ta bort", "aria-label": "Ta bort", onclick: () => { if (confirm("Ta bort " + (it.name || label || it.id) + "?")) { items.splice(i, 1); markDirty(); renderList(); } }}, "✕"))));
+  });
+}
+async function fillNames() {
+  const ids = S.settings.instruments.map(i => i.id).filter(id => !names[id]);
+  if (!ids.length) return;
+  try { Object.assign(names, (await api("/api/names?ids=" + ids.join(","))).names); renderList(); } catch (e) {}
+}
+function addInstrument(id, kind, name, ticker) {
+  if (S.settings.instruments.some(x => x.id === id)) { setMsg("Finns redan i listan", "err"); return; }
+  names[id] = {name: name || id, ticker: ticker || ""};
+  S.settings.instruments.push({id, kind, name: "", views: kind === "fund" ? ["year"] : ["day", "year"], enabled: true, qty: null, cost: null, cost_total_sek: null});
+  markDirty(); renderList();
+}
+
+/* ── search ─────────────────────────────────────────────────────────────── */
+$("q").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  if (q.length < 2) { $("results").replaceChildren(); return; }
+  searchTimer = setTimeout(async () => {
+    const seq = ++searchSeq;
+    $("results").replaceChildren(h("p", {class: "muted"}, "Söker…"));
+    try {
+      const d = await api("/api/search?q=" + encodeURIComponent(q));
+      if (seq !== searchSeq) return;
+      const box = h("div", {class: "results"});
+      if (!d.results.length) box.append(h("div", {class: "res muted"}, "Inga träffar"));
+      for (const r of d.results) {
+        const have = S.settings.instruments.some(x => x.id === r.id);
+        box.append(h("div", {class: "res"},
+          h("div", {}, h("b", {}, r.name), " ", h("span", {class: "muted"}, [r.ticker, r.type.toLowerCase().replace(/_/g, " "), r.price ? r.price + " " + (r.currency || "") : ""].filter(Boolean).join(" · "))),
+          h("button", {type: "button", disabled: have, onclick: () => { addInstrument(r.id, r.kind, r.name, r.ticker); renderList(); $("results").replaceChildren(); $("q").value = ""; }}, have ? "Tillagd" : "Lägg till")));
+      }
+      $("results").replaceChildren(box);
+    } catch (err) { if (seq === searchSeq) $("results").replaceChildren(h("p", {class: "msg err"}, err.message)); }
+  }, 350);
+});
+$("madd").addEventListener("click", () => {
+  const id = $("mid").value.trim();
+  if (!/^\d{1,12}$/.test(id)) { setMsg("Orderbook-ID ska bara innehålla siffror", "err"); return; }
+  addInstrument(id, $("mkind").value, "", ""); $("mid").value = "";
+});
+
+/* ── portfolio ──────────────────────────────────────────────────────────── */
+let pfView = null, pfSeq = 0;
+function chartSvg(series, baseline, blabel) {
+  const W = 640, Hh = 150, pad = 8;
+  const vals = series.map(p => p[1]).concat(baseline != null ? [baseline] : []);
+  const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
+  const x = i => pad + i * (W - 2 * pad) / Math.max(1, series.length - 1);
+  const y = v => Hh - pad - (v - lo) * (Hh - 2 * pad - 14) / span;
+  const pts = series.map((p, i) => x(i).toFixed(1) + "," + y(p[1]).toFixed(1));
+  const ns = "http://www.w3.org/2000/svg", mk = (t, a) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const svg = mk("svg", {viewBox: `0 0 ${W} ${Hh}`, width: "100%", role: "img", "aria-label": "Portföljvärde över tid"});
+  svg.append(mk("polygon", {points: pts.join(" ") + ` ${x(series.length - 1)},${Hh - pad} ${x(0)},${Hh - pad}`, fill: "currentColor", "fill-opacity": ".08"}));
+  if (baseline != null) {
+    svg.append(mk("line", {x1: 0, x2: W, y1: y(baseline), y2: y(baseline), stroke: "currentColor", "stroke-dasharray": "5 4", "stroke-opacity": ".6"}));
+    const t = mk("text", {x: W - 4, y: y(baseline) - 4, "text-anchor": "end", "font-size": 11, fill: "currentColor", "fill-opacity": ".7"});
+    t.textContent = (blabel === "COST" ? "Inköpskostnad " : "Start ") + nf.format(baseline); svg.append(t);
+  }
+  svg.append(mk("polyline", {points: pts.join(" "), fill: "none", stroke: "currentColor", "stroke-width": 1.7}));
+  return svg;
+}
+async function loadPortfolio() {
+  const has = S.settings.instruments.some(i => i.qty);
+  $("pfcard").hidden = !has; if (!has) return;
+  const view = pfView || S.settings.portfolio.period, seq = ++pfSeq;
+  $("pfbody").className = "muted"; $("pfbody").textContent = "Hämtar kurser… (första gången kan ta en halv minut)";
+  try {
+    const d = await api("/api/portfolio?view=" + encodeURIComponent(view));
+    if (seq !== pfSeq) return;
+    renderPortfolio(d);
+  } catch (e) { if (seq === pfSeq) { $("pfbody").className = "msg err"; $("pfbody").textContent = e.message; } }
+}
+function renderPortfolio(d) {
+  const body = $("pfbody"); body.className = ""; body.replaceChildren();
+  $("pfsub").textContent = d.positions.length + " innehav · värden i SEK";
+  const m = (l, v, s, c) => h("div", {class: "metric"}, h("div", {class: "l"}, l), h("div", {class: "v " + (c || "")}, v), s ? h("div", {class: "s " + (c || "")}, s) : null);
+  body.append(h("div", {class: "metrics"},
+    m("Värde", nf.format(d.value)),
+    m("Idag", signed(d.day), signed(d.day_pct, 2) + " %", cls(d.day)),
+    d.total != null ? m("Sedan köp" + (d.cost_complete ? "" : " (delvis)"), signed(d.total), d.total_pct != null ? signed(d.total_pct, 1) + " %" : "", cls(d.total))
+                    : m("Sedan köp", "–", "Ange snittkurs")));
+  const chips = h("div", {class: "chips", style: "margin:0 0 8px"}, S.portfolio_views.map(v =>
+    h("button", {class: "chip" + (v.key === d.view ? " on" : ""), type: "button", onclick: () => { pfView = v.key; loadPortfolio(); }}, v.sv)));
+  body.append(chips);
+  if (d.series.length > 1) {
+    body.append(chartSvg(d.series, d.baseline, d.baseline_label));
+    body.append(h("div", {class: "muted"}, "Beräknat med dagens innehav bakåt i tiden. Valutakursen är dagens."));
+  }
+  if (d.skipped.length) body.append(h("p", {class: "msg err"}, "Ingår inte i summan (saknar kurs eller växelkurs): " + d.skipped.join(", ")));
+  const two = (kr, pct, c) => h("td", {class: c || ""}, kr, h("div", {class: "sub"}, pct));
+  const rows = d.positions.map(p => h("tr", {},
+    h("td", {class: "nm"}, p.name),
+    h("td", {class: "hide-sm"}, nf2.format(p.qty)),
+    h("td", {}, nf.format(p.value) + (p.converted ? "" : " " + p.cur)),
+    h("td", {class: "hide-sm"}, p.converted ? Math.round(p.share * 100) + " %" : "–"),
+    p.converted ? two(signed(p.day), signed(p.day_pct, 2) + " %", cls(p.day_pct)) : h("td", {}, signed(p.day_pct, 2) + " %"),
+    p.total != null ? two(signed(p.total), p.total_pct != null ? signed(p.total_pct, 1) + " %" : "", cls(p.total)) : h("td", {}, "–")));
+  const foot = h("tr", {class: "total"},
+    h("td", {class: "nm"}, "Totalt"), h("td", {class: "hide-sm"}, ""),
+    h("td", {}, nf.format(d.value)), h("td", {class: "hide-sm"}, "100 %"),
+    two(signed(d.day), signed(d.day_pct, 2) + " %", cls(d.day)),
+    d.total != null ? two(signed(d.total), (d.total_pct != null ? signed(d.total_pct, 1) + " %" : "") + (d.cost_complete ? "" : " (delvis)"), cls(d.total)) : h("td", {}, "–"));
+  body.append(h("div", {class: "scroll", style: "margin-top:10px"}, h("table", {},
+    h("thead", {}, h("tr", {}, [["Namn"], ["Antal", "hide-sm"], ["Värde"], ["Andel", "hide-sm"], ["Idag"], ["Avkastning"]].map(t => h("th", {class: t[1] || ""}, t[0])))),
+    h("tbody", {}, rows), h("tfoot", {}, foot))));
+}
+
+/* ── settings form ──────────────────────────────────────────────────────── */
+function bindSettings() {
+  const st = S.settings;
+  $("secs").value = st.seconds_per_view; $("secsr").value = Math.min(120, st.seconds_per_view);
+  $("showip").checked = st.show_ip; $("pfsum").checked = st.portfolio.summary; $("pftab").checked = st.portfolio.table;
+  const sel = $("pfper"); sel.replaceChildren(...S.portfolio_views.map(v => h("option", {value: v.key, selected: v.key === st.portfolio.period}, v.sv)));
+  $("pwstate").textContent = st.password_set ? "Lösenord är satt." : "Inget lösenord är satt just nu.";
+  $("pwdel").hidden = !st.password_set;
+}
+$("secs").addEventListener("input", e => { S.settings.seconds_per_view = Number(e.target.value); $("secsr").value = Math.min(120, e.target.value); markDirty(); });
+$("secsr").addEventListener("input", e => { S.settings.seconds_per_view = Number(e.target.value); $("secs").value = e.target.value; markDirty(); });
+$("showip").addEventListener("change", e => { S.settings.show_ip = e.target.checked; markDirty(); });
+$("pfsum").addEventListener("change", e => { S.settings.portfolio.summary = e.target.checked; markDirty(); });
+$("pftab").addEventListener("change", e => { S.settings.portfolio.table = e.target.checked; markDirty(); });
+$("pfper").addEventListener("change", e => { S.settings.portfolio.period = e.target.value; markDirty(); });
+
+$("save").addEventListener("click", async () => {
+  const body = JSON.parse(JSON.stringify(S.settings)); delete body.password_set;
+  if (body.instruments.some(i => Number.isNaN(i.qty) || Number.isNaN(i.cost) || Number.isNaN(i.cost_total_sek))) { setMsg("Kontrollera antal och priser: ogiltigt tal", "err"); return; }
+  $("save").disabled = true; setMsg("Sparar…");
+  try {
+    const d = await api("/api/settings", body);
+    S.settings = d.settings; dirty = false; setMsg("Sparat. Skärmen uppdateras om några sekunder.", "ok");
+    bindSettings(); renderList(); pfView = null; loadPortfolio(); setTimeout(pollState, 8000);
+  } catch (e) { setMsg(e.message, "err"); }
+  $("save").disabled = false;
+});
+$("next").addEventListener("click", async () => { try { await api("/api/next", {}); setTimeout(pollState, 7000); } catch (e) { setMsg(e.message, "err"); } });
+$("pfrefresh").addEventListener("click", loadPortfolio);
+
+async function setPassword(pw) {
+  try {
+    const d = await api("/api/password", {password: pw});
+    S.settings.password_set = d.password_set; $("pw").value = ""; bindSettings();
+    $("pwmsg").className = "msg ok"; $("pwmsg").textContent = d.password_set ? "Lösenord sparat" : "Lösenord borttaget";
+    if (d.password_set) $("pwmsg").textContent += " – webbläsaren frågar efter det vid nästa åtgärd";
+  } catch (e) { $("pwmsg").className = "msg err"; $("pwmsg").textContent = e.message; }
+}
+$("pwset").addEventListener("click", () => { const pw = $("pw").value; if (pw.length < 4) { $("pwmsg").className = "msg err"; $("pwmsg").textContent = "Minst 4 tecken"; return; } setPassword(pw); });
+$("pwdel").addEventListener("click", () => { if (confirm("Ta bort lösenordet? Alla på nätet kan då ändra inställningarna.")) setPassword(""); });
+
+/* ── start ──────────────────────────────────────────────────────────────── */
+(async function init() {
+  try {
+    S = await api("/api/state");
+  } catch (e) { $("now").textContent = "Kunde inte hämta status: " + e.message; return; }
+  Object.assign(names, S.names || {});
+  renderStatus(); refreshImage(); bindSettings(); renderList(); loadPortfolio(); fillNames();
+  setInterval(pollState, 10000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Runtime / personal data (holdings, web password hash) - never commit
+settings.json
+settings.json.tmp
+
+# lgpio notify pipe created at runtime
+.lgd-nfy*
+
+# Editor / local tooling
+.claude/
+*.swp

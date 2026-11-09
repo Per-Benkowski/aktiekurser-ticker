@@ -1,0 +1,23 @@
+[Unit]
+Description=Aktiekurser e-ink ticker with web interface (Avanza)
+After=network-online.target
+Wants=network-online.target
+# Only one program can own the e-ink panel: starting this one stops the old ticker.
+Conflicts=aktiekurser.service
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__APPDIR__
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__APPDIR__/venv/bin/python __APPDIR__/main.py
+# lets the non-root user listen on port 80, so the address on the display needs no ":port"
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+TimeoutStopSec=15
+Restart=on-failure
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

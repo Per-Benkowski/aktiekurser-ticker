@@ -1,0 +1,34 @@
+# stocks.txt – orderbookIds från Avanza (startlista vid första start)
+#
+# Format:  orderbookId  [valfritt visningsnamn]
+#          FUND orderbookId  [valfritt visningsnamn]   (för fonder)
+# Rader som börjar med # är kommentarer.
+#
+# Hitta orderbookId genom att gå till aktiens sida på avanza.se och
+# kopiera siffrorna ur URL:en. Exempel:
+#
+#   https://www.avanza.se/aktier/om-aktien.html/5269/volvo-b
+#                                               ^^^^
+#                                               det är orderbookId
+#
+# Om du inte anger något visningsnamn används namnet från Avanza-API:et.
+# Listan kan ändras i webbgränssnittet efter första start.
+
+# --- Exempel ---
+# Investor B
+5247
+
+# Volvo B
+5269
+
+# Ericsson B
+5240
+
+# H&M B
+5364
+
+# Atlas Copco A
+5234
+
+# Avanza Zero (fond)
+FUND 41567
